@@ -34,27 +34,29 @@ func constructURLForReportInfoForOrgCluster(organizationID string,
 		server.ReportMetainfoEndpoint, organizationID, clusterID, userID)
 }
 
+func constructFrisby(msg, url string, statusCode int) *frisby.Frisby {
+	f := frisby.Create(msg).Get(url)
+	setAuthHeader(f)
+	f.Send()
+	f.ExpectStatus(statusCode)
+	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	return f
+}
+
 // checkReportInfoEndpointForKnownOrganizationAndKnownCluster check if the
 // endpoint to return report metadata works as expected
 func checkReportInfoEndpointForKnownOrganizationAndKnownCluster() {
 	url := constructURLForReportInfoForOrgCluster("1", knownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for existing organization and cluster ID").Get(url)
-	setAuthHeader(f)
-	f.Send()
-	f.ExpectStatus(200)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for existing organization and cluster ID", url, 200)
 	f.PrintReport()
+
 }
 
 // checkReportInfoEndpointForKnownOrganizationAndUnknownCluster check if the
 // endpoint to return report metadata works as expected
 func checkReportInfoEndpointForKnownOrganizationAndUnknownCluster() {
 	url := constructURLForReportInfoForOrgCluster("1", unknownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for existing organization and non-existing cluster ID").Get(url)
-	setAuthHeader(f)
-	f.Send()
-	f.ExpectStatus(404)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for existing organization and non-existing cluster ID", url, 404)
 	f.PrintReport()
 }
 
@@ -62,11 +64,7 @@ func checkReportInfoEndpointForKnownOrganizationAndUnknownCluster() {
 // endpoint to return report metadata works as expected
 func checkReportInfoEndpointForUnknownOrganizationAndKnownCluster() {
 	url := constructURLForReportInfoForOrgCluster(unknownOrganizationID, knownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for unknown organization and cluster ID").Get(url)
-	setAuthHeader(f)
-	f.Send()
-	f.ExpectStatus(404)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for unknown organization and cluster ID", url, 404)
 	f.PrintReport()
 }
 
@@ -74,11 +72,7 @@ func checkReportInfoEndpointForUnknownOrganizationAndKnownCluster() {
 // endpoint to return report metadata works as expected
 func checkReportInfoEndpointForUnknownOrganizationAndUnknownCluster() {
 	url := constructURLForReportInfoForOrgCluster(unknownOrganizationID, unknownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for unknown organization and non-existing cluster ID").Get(url)
-	setAuthHeader(f)
-	f.Send()
-	f.ExpectStatus(404)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for unknown organization and non-existing cluster ID", url, 404)
 	f.PrintReport()
 }
 
@@ -86,11 +80,7 @@ func checkReportInfoEndpointForUnknownOrganizationAndUnknownCluster() {
 // return report metadata works as expected
 func checkReportInfoEndpointForImproperOrganization() {
 	url := constructURLForReportInfoForOrgCluster(wrongOrganizationID, knownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for improper organization").Get(url)
-	setAuthHeader(f)
-	f.Send()
-	f.ExpectStatus(400)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for improper organization", url, 400)
 
 	statusResponse := readStatusFromResponse(f)
 	checkErrorStatusResponse(f, statusResponse)
@@ -110,10 +100,7 @@ func checkReportInfoEndpointWrongMethods() {
 // This test variant does not sent authorization header
 func checkReportInfoEndpointForKnownOrganizationAndKnownClusterUnauthorizedCase() {
 	url := constructURLForReportInfoForOrgCluster("1", knownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for existing organization and cluster ID").Get(url)
-	f.Send()
-	f.ExpectStatus(401)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for existing organization and cluster ID", url, 401)
 	f.PrintReport()
 }
 
@@ -122,10 +109,7 @@ func checkReportInfoEndpointForKnownOrganizationAndKnownClusterUnauthorizedCase(
 // This test variant does not sent authorization header
 func checkReportInfoEndpointForKnownOrganizationAndUnknownClusterUnauthorizedCase() {
 	url := constructURLForReportInfoForOrgCluster("1", unknownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for existing organization and non-existing cluster ID").Get(url)
-	f.Send()
-	f.ExpectStatus(401)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for existing organization and non-existing cluster ID", url, 401)
 	f.PrintReport()
 }
 
@@ -134,10 +118,7 @@ func checkReportInfoEndpointForKnownOrganizationAndUnknownClusterUnauthorizedCas
 // This test variant does not sent authorization header
 func checkReportInfoEndpointForUnknownOrganizationAndKnownClusterUnauthorizedCase() {
 	url := constructURLForReportInfoForOrgCluster(unknownOrganizationID, knownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for unknown organization and cluster ID").Get(url)
-	f.Send()
-	f.ExpectStatus(401)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for unknown organization and cluster ID", url, 401)
 	f.PrintReport()
 }
 
@@ -146,10 +127,7 @@ func checkReportInfoEndpointForUnknownOrganizationAndKnownClusterUnauthorizedCas
 // This test variant does not sent authorization header
 func checkReportInfoEndpointForUnknownOrganizationAndUnknownClusterUnauthorizedCase() {
 	url := constructURLForReportInfoForOrgCluster(unknownOrganizationID, unknownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for unknown organization and non-existing cluster ID").Get(url)
-	f.Send()
-	f.ExpectStatus(401)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for unknown organization and non-existing cluster ID", url, 401)
 	f.PrintReport()
 }
 
@@ -158,10 +136,7 @@ func checkReportInfoEndpointForUnknownOrganizationAndUnknownClusterUnauthorizedC
 // This test variant does not sent authorization header
 func checkReportInfoEndpointForImproperOrganizationUnauthorizedCase() {
 	url := constructURLForReportInfoForOrgCluster(wrongOrganizationID, knownClusterForOrganization1, testdata.UserID)
-	f := frisby.Create("Check the endpoint to return report metadata for improper organization").Get(url)
-	f.Send()
-	f.ExpectStatus(401)
-	f.ExpectHeader(contentTypeHeader, ContentTypeJSON)
+	f := constructFrisby("Check the endpoint to return report metadata for improper organization", url, 401)
 
 	statusResponse := readStatusFromResponse(f)
 	checkErrorStatusResponse(f, statusResponse)
