@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<!--
+ Copyright 2023 Red Hat, Inc
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<html>
+<head>
+<title>redis_storage_test.go</title>
+<meta charset="utf-8"/>
+<style type="text/css">body {
+    background: rgb(225, 225, 225);
+    margin: 0px;
+    padding: 0px;
+}
+
+#docgo p {
+    margin-top: 0px;
+    margin-right: 0px;
+    margin-bottom: 15px;
+    margin-left: 0px;
+}
+
+#docgo div {
+    display: inline;
+}
+
+#docgo #background {
+    position: fixed;
+    top: 0; left: 525px; right: 0; bottom: 0;
+    background: rgb(47, 47, 47);
+    border-left: 1px solid #e5e5ee;
+    z-index: -1;
+}
+
+#docgo .keyword {
+    color: rgb(250, 200, 100);
+}
+
+#docgo .literal {
+    color: rgb(140, 190, 100);
+}
+
+#docgo .ident {
+    color: white;
+}
+
+#docgo .operator {
+    color: white;
+}
+
+#docgo .comment {
+}
+
+#docgo h1, h2, h3, h4, h5 {
+    text-align: left;
+    margin-top: 0px;
+    margin-right: 0px;
+    margin-bottom: 15px;
+    margin-left: 0px;
+}
+
+#docgo h1 {
+    margin-top: 40px;
+}
+
+#docgo .doc {
+    vertical-align: top;
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, FreeSerif, serif;
+    font-size: 15px;
+    line-height: 22px;
+    color: black;
+    min-width: 450px;
+    max-width: 450px;
+    padding-top: 10px;
+    padding-right: 25px;
+    padding-bottom: 1px;
+    padding-left: 50px;
+    overflow-x: hidden;
+}
+
+#docgo .code {
+    min-width: 650px;
+    max-width: 650px;
+    padding-left: 25px;
+    padding-right: 15px;
+    border-left: 1px;
+    overflow-x: hidden;
+    vertical-align: top;
+}
+
+#docgo .code pre code  {
+    font-size: 12px;
+    line-height: 18px;
+    font-family: Menlo, Monaco, Consolas, "Lucida Console", monospace;
+    color: rgb(120, 120, 120);
+}
+</style>
+</head>
+<body>
+<div id="docgo">
+  <div id="background"></div>
+  <table>
+    <thead><tr><th class="doc"><h1>redis_storage_test.go</h1></th><th class="code"></th></tr></thead>
+    <tbody>
+      
+      <tr class="section">
+	<td class="doc"><p>Copyright 2023 Red Hat, Inc</p>
+
+<p>Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at</p>
+
+<pre><code> http://www.apache.org/licenses/LICENSE-2.0
+</code></pre>
+
+<p>Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">package</div> <div class="ident">storage_test</div><div class="operator"></div>
+
+<div class="keyword">import</div> <div class="operator">(</div>
+	<div class="literal">&#34;fmt&#34;</div><div class="operator"></div>
+	<div class="literal">&#34;strings&#34;</div><div class="operator"></div>
+	<div class="literal">&#34;time&#34;</div><div class="operator"></div>
+
+	<div class="literal">&#34;errors&#34;</div><div class="operator"></div>
+	<div class="literal">&#34;testing&#34;</div><div class="operator"></div>
+
+	<div class="literal">&#34;github.com/go-redis/redismock/v9&#34;</div><div class="operator"></div>
+	<div class="literal">&#34;github.com/stretchr/testify/assert&#34;</div><div class="operator"></div>
+
+	<div class="literal">&#34;github.com/RedHatInsights/insights-content-service/content&#34;</div><div class="operator"></div>
+	<div class="literal">&#34;github.com/RedHatInsights/insights-operator-utils/redis&#34;</div><div class="operator"></div>
+	<div class="ident">ctypes</div> <div class="literal">&#34;github.com/RedHatInsights/insights-results-types&#34;</div><div class="operator"></div>
+
+	<div class="literal">&#34;github.com/RedHatInsights/insights-results-aggregator-data/testdata&#34;</div><div class="operator"></div>
+	<div class="literal">&#34;github.com/RedHatInsights/insights-results-aggregator/storage&#34;</div><div class="operator"></div>
+	<div class="literal">&#34;github.com/RedHatInsights/insights-results-aggregator/types&#34;</div><div class="operator"></div>
+<div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>default Redis configuration</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">var</div> <div class="ident">configuration</div> <div class="operator">=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">Configuration</div><div class="operator">{</div>
+	<div class="ident">RedisConfiguration</div><div class="operator">:</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisConfiguration</div><div class="operator">{</div>
+		<div class="ident">RedisEndpoint</div><div class="operator">:</div>       <div class="literal">&#34;localhost:12345&#34;</div><div class="operator">,</div>
+		<div class="ident">RedisDatabase</div><div class="operator">:</div>       <div class="literal">0</div><div class="operator">,</div>
+		<div class="ident">RedisTimeoutSeconds</div><div class="operator">:</div> <div class="literal">1</div><div class="operator">,</div>
+		<div class="ident">RedisPassword</div><div class="operator">:</div>       <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator">,</div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>getMockRedis is used to get a mocked Redis client to expect and
+respond to queries</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">getMockRedis</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">(</div>
+	<div class="ident">mockClient</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisStorage</div><div class="operator">,</div> <div class="ident">mockServer</div> <div class="ident">redismock</div><div class="operator">.</div><div class="ident">ClientMock</div><div class="operator">,</div>
+<div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">client</div><div class="operator">,</div> <div class="ident">mockServer</div> <div class="operator">:=</div> <div class="ident">redismock</div><div class="operator">.</div><div class="ident">NewClientMock</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">mockClient</div> <div class="operator">=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisStorage</div><div class="operator">{</div>
+		<div class="ident">Client</div><div class="operator">:</div> <div class="ident">redis</div><div class="operator">.</div><div class="ident">Client</div><div class="operator">{</div><div class="ident">Connection</div><div class="operator">:</div> <div class="ident">client</div><div class="operator">}</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+	<div class="ident">err</div> <div class="operator">:=</div> <div class="ident">mockClient</div><div class="operator">.</div><div class="ident">Init</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="keyword">if</div> <div class="ident">err</div> <div class="operator">!=</div> <div class="ident">nil</div> <div class="operator">{</div>
+		<div class="ident">t</div><div class="operator">.</div><div class="ident">Fatal</div><div class="operator">(</div><div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+	<div class="keyword">return</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>assertRedisExpectationsMet helper function used to ensure mock expectations were met</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">assertRedisExpectationsMet</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">,</div> <div class="ident">mock</div> <div class="ident">redismock</div><div class="operator">.</div><div class="ident">ClientMock</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="keyword">if</div> <div class="ident">err</div> <div class="operator">:=</div> <div class="ident">mock</div><div class="operator">.</div><div class="ident">ExpectationsWereMet</div><div class="operator">(</div><div class="operator">)</div><div class="operator">;</div> <div class="ident">err</div> <div class="operator">!=</div> <div class="ident">nil</div> <div class="operator">{</div>
+		<div class="ident">t</div><div class="operator">.</div><div class="ident">Error</div><div class="operator">(</div><div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+<div class="keyword">func</div> <div class="ident">constructExpectedKey</div><div class="operator">(</div><div class="ident">orgID</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">clusterName</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div> <div class="ident">requestID</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">RequestID</div><div class="operator">)</div> <div class="ident">string</div> <div class="operator">{</div>
+	<div class="keyword">return</div> <div class="ident">fmt</div><div class="operator">.</div><div class="ident">Sprintf</div><div class="operator">(</div><div class="literal">&#34;organization:%d:cluster:%s:request:%s&#34;</div><div class="operator">,</div>
+		<div class="ident">int</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestNewRedisClient checks if it is possible to construct Redis client</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestNewRedisClient</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>try to instantiate Redis storage</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">client</div><div class="operator">,</div> <div class="ident">err</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">NewRedisStorage</div><div class="operator">(</div><div class="ident">configuration</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>check results</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NotNil</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NoError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestCloseRedis1 checks if it is possible to close initialized Redis client</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestCloseRedis1</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>try to instantiate Redis storage</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">client</div><div class="operator">,</div> <div class="ident">err</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">NewRedisStorage</div><div class="operator">(</div><div class="ident">configuration</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>check results</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NotNil</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NoError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>try to close the client</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">err</div> <div class="operator">=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Close</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NoError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestCloseRedis2 checks if it is possible to close unitialized Redis client</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestCloseRedis2</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">client</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisStorage</div><div class="operator">{</div><div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>check results</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NotNil</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>try to close the client</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">err</div> <div class="operator">:=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Close</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NoError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestNewDummyRedisClient checks if it is possible to construct Redis
+client structure useful for testing</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestNewDummyRedisClient</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>configuration where Redis endpoint is set to empty string</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">configuration</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">Configuration</div><div class="operator">{</div>
+		<div class="ident">RedisConfiguration</div><div class="operator">:</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisConfiguration</div><div class="operator">{</div>
+			<div class="ident">RedisEndpoint</div><div class="operator">:</div>       <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+			<div class="ident">RedisDatabase</div><div class="operator">:</div>       <div class="literal">0</div><div class="operator">,</div>
+			<div class="ident">RedisTimeoutSeconds</div><div class="operator">:</div> <div class="literal">1</div><div class="operator">,</div>
+			<div class="ident">RedisPassword</div><div class="operator">:</div>       <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+		<div class="operator">}</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>try to instantiate Redis storage</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">client</div><div class="operator">,</div> <div class="ident">err</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">NewRedisStorage</div><div class="operator">(</div><div class="ident">configuration</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>check results</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NotNil</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NoError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestNewRedisClientDBIndexOutOfRange checks if Redis client
+constructor checks for incorrect database index</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestNewRedisClientDBIndexOutOfRange</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">configuration1</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">Configuration</div><div class="operator">{</div>
+		<div class="ident">RedisConfiguration</div><div class="operator">:</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisConfiguration</div><div class="operator">{</div>
+			<div class="ident">RedisEndpoint</div><div class="operator">:</div>       <div class="literal">&#34;localhost:12345&#34;</div><div class="operator">,</div>
+			<div class="ident">RedisDatabase</div><div class="operator">:</div>       <div class="operator">-</div><div class="literal">1</div><div class="operator">,</div>
+			<div class="ident">RedisTimeoutSeconds</div><div class="operator">:</div> <div class="literal">1</div><div class="operator">,</div>
+			<div class="ident">RedisPassword</div><div class="operator">:</div>       <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+		<div class="operator">}</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>try to instantiate Redis storage</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">client</div><div class="operator">,</div> <div class="ident">err</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">NewRedisStorage</div><div class="operator">(</div><div class="ident">configuration1</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>check results</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">assert</div><div class="operator">.</div><div class="ident">Nil</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">Error</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">configuration2</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">Configuration</div><div class="operator">{</div>
+		<div class="ident">RedisConfiguration</div><div class="operator">:</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisConfiguration</div><div class="operator">{</div>
+			<div class="ident">RedisEndpoint</div><div class="operator">:</div>       <div class="literal">&#34;localhost:12345&#34;</div><div class="operator">,</div>
+			<div class="ident">RedisDatabase</div><div class="operator">:</div>       <div class="literal">16</div><div class="operator">,</div>
+			<div class="ident">RedisTimeoutSeconds</div><div class="operator">:</div> <div class="literal">1</div><div class="operator">,</div>
+			<div class="ident">RedisPassword</div><div class="operator">:</div>       <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+		<div class="operator">}</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>try to instantiate Redis storage</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">client</div><div class="operator">,</div> <div class="ident">err</div> <div class="operator">=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">NewRedisStorage</div><div class="operator">(</div><div class="ident">configuration2</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>check results</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">assert</div><div class="operator">.</div><div class="ident">Nil</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">Error</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestRedisWriteReportForCluster checks the method WriteReportForCluster</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestRedisWriteReportForCluster</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">client</div><div class="operator">,</div> <div class="ident">server</div> <div class="operator">:=</div> <div class="ident">getMockRedis</div><div class="operator">(</div><div class="ident">t</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>Redis client needs to be initialized</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">err</div> <div class="operator">:=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Init</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="keyword">if</div> <div class="ident">err</div> <div class="operator">!=</div> <div class="ident">nil</div> <div class="operator">{</div>
+		<div class="ident">t</div><div class="operator">.</div><div class="ident">Fatal</div><div class="operator">(</div><div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>it is expected that key will be set with given expiration period</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">expectedKey</div> <div class="operator">:=</div> <div class="ident">constructExpectedKey</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectSet</div><div class="operator">(</div><div class="ident">expectedKey</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="literal">&#34;OK&#34;</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">timestamp</div> <div class="operator">:=</div> <div class="ident">time</div><div class="operator">.</div><div class="ident">Now</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">expectedData</div> <div class="operator">:=</div> <div class="ident">ctypes</div><div class="operator">.</div><div class="ident">SimplifiedReport</div><div class="operator">{</div>
+		<div class="ident">OrgID</div><div class="operator">:</div>              <div class="ident">int</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">RequestID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ClusterID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ReceivedTimestamp</div><div class="operator">:</div>  <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div>
+		<div class="ident">ProcessedTimestamp</div><div class="operator">:</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">RuleHitsCSV</div><div class="operator">:</div>        <div class="literal">&#34;ccx_rules_ocp.external.rules.node_installer_degraded|ek1,test.rule2|ek2,test.rule3|ek3&#34;</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+
+	<div class="ident">expectedReportKey</div> <div class="operator">:=</div> <div class="ident">expectedKey</div> <div class="operator">&#43;</div> <div class="literal">&#34;:reports&#34;</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectHSet</div><div class="operator">(</div><div class="ident">expectedReportKey</div><div class="operator">,</div> <div class="ident">expectedData</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectExpire</div><div class="operator">(</div><div class="ident">expectedReportKey</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="ident">true</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">err</div> <div class="operator">=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">WriteReportForCluster</div><div class="operator">(</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">Report3Rules</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">Report3RulesParsed</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">KafkaOffset</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NoError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assertRedisExpectationsMet</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">server</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestWriteEmptyReport checks the method WriteReportForCluster for empty rule hits</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestWriteEmptyReport</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">client</div><div class="operator">,</div> <div class="ident">server</div> <div class="operator">:=</div> <div class="ident">getMockRedis</div><div class="operator">(</div><div class="ident">t</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>Redis client needs to be initialized</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">err</div> <div class="operator">:=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Init</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="keyword">if</div> <div class="ident">err</div> <div class="operator">!=</div> <div class="ident">nil</div> <div class="operator">{</div>
+		<div class="ident">t</div><div class="operator">.</div><div class="ident">Fatal</div><div class="operator">(</div><div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>it is expected that key will be set with given expiration period</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">expectedKey</div> <div class="operator">:=</div> <div class="ident">constructExpectedKey</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectSet</div><div class="operator">(</div><div class="ident">expectedKey</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="literal">&#34;OK&#34;</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">timestamp</div> <div class="operator">:=</div> <div class="ident">time</div><div class="operator">.</div><div class="ident">Now</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">expectedData</div> <div class="operator">:=</div> <div class="ident">ctypes</div><div class="operator">.</div><div class="ident">SimplifiedReport</div><div class="operator">{</div>
+		<div class="ident">OrgID</div><div class="operator">:</div>              <div class="ident">int</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">RequestID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ClusterID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ReceivedTimestamp</div><div class="operator">:</div>  <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div>
+		<div class="ident">ProcessedTimestamp</div><div class="operator">:</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">RuleHitsCSV</div><div class="operator">:</div>        <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+
+	<div class="ident">expectedReportKey</div> <div class="operator">:=</div> <div class="ident">expectedKey</div> <div class="operator">&#43;</div> <div class="literal">&#34;:reports&#34;</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectHSet</div><div class="operator">(</div><div class="ident">expectedReportKey</div><div class="operator">,</div> <div class="ident">expectedData</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectExpire</div><div class="operator">(</div><div class="ident">expectedReportKey</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="ident">true</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">err</div> <div class="operator">=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">WriteReportForCluster</div><div class="operator">(</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">Report3Rules</div><div class="operator">,</div> <div class="operator">[</div><div class="operator">]</div><div class="ident">types</div><div class="operator">.</div><div class="ident">ReportItem</div><div class="operator">{</div><div class="operator">}</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">KafkaOffset</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">NoError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assertRedisExpectationsMet</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">server</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestRedisWriteReportForClusterErrorHandling1 checks how the method
+WriteReportForCluster handles errors</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestRedisWriteReportForClusterErrorHandling1</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">errorMessage</div> <div class="operator">:=</div> <div class="literal">&#34;key set error!&#34;</div><div class="operator"></div>
+
+	<div class="ident">client</div><div class="operator">,</div> <div class="ident">server</div> <div class="operator">:=</div> <div class="ident">getMockRedis</div><div class="operator">(</div><div class="ident">t</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>Redis client needs to be initialized</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">err</div> <div class="operator">:=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Init</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="keyword">if</div> <div class="ident">err</div> <div class="operator">!=</div> <div class="ident">nil</div> <div class="operator">{</div>
+		<div class="ident">t</div><div class="operator">.</div><div class="ident">Fatal</div><div class="operator">(</div><div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>it is expected that key will be set with given expiration period</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">expectedKey</div> <div class="operator">:=</div> <div class="ident">constructExpectedKey</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectSet</div><div class="operator">(</div><div class="ident">expectedKey</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetErr</div><div class="operator">(</div><div class="ident">errors</div><div class="operator">.</div><div class="ident">New</div><div class="operator">(</div><div class="ident">errorMessage</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">timestamp</div> <div class="operator">:=</div> <div class="ident">time</div><div class="operator">.</div><div class="ident">Now</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">err</div> <div class="operator">=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">WriteReportForCluster</div><div class="operator">(</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">Report3Rules</div><div class="operator">,</div> <div class="operator">[</div><div class="operator">]</div><div class="ident">types</div><div class="operator">.</div><div class="ident">ReportItem</div><div class="operator">{</div><div class="operator">}</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">KafkaOffset</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">Error</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">EqualError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">,</div> <div class="ident">errorMessage</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assertRedisExpectationsMet</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">server</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestRedisWriteReportForClusterErrorHandling2 checks how the method
+WriteReportForCluster handles errors</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestRedisWriteReportForClusterErrorHandling2</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">errorMessage</div> <div class="operator">:=</div> <div class="literal">&#34;hash set error!&#34;</div><div class="operator"></div>
+
+	<div class="ident">client</div><div class="operator">,</div> <div class="ident">server</div> <div class="operator">:=</div> <div class="ident">getMockRedis</div><div class="operator">(</div><div class="ident">t</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>Redis client needs to be initialized</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">err</div> <div class="operator">:=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Init</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="keyword">if</div> <div class="ident">err</div> <div class="operator">!=</div> <div class="ident">nil</div> <div class="operator">{</div>
+		<div class="ident">t</div><div class="operator">.</div><div class="ident">Fatal</div><div class="operator">(</div><div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>it is expected that key will be set with given expiration period</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">expectedKey</div> <div class="operator">:=</div> <div class="ident">constructExpectedKey</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectSet</div><div class="operator">(</div><div class="ident">expectedKey</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="literal">&#34;OK&#34;</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">timestamp</div> <div class="operator">:=</div> <div class="ident">time</div><div class="operator">.</div><div class="ident">Now</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">expectedData</div> <div class="operator">:=</div> <div class="ident">ctypes</div><div class="operator">.</div><div class="ident">SimplifiedReport</div><div class="operator">{</div>
+		<div class="ident">OrgID</div><div class="operator">:</div>              <div class="ident">int</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">RequestID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ClusterID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ReceivedTimestamp</div><div class="operator">:</div>  <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div>
+		<div class="ident">ProcessedTimestamp</div><div class="operator">:</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">RuleHitsCSV</div><div class="operator">:</div>        <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+
+	<div class="ident">expectedReportKey</div> <div class="operator">:=</div> <div class="ident">expectedKey</div> <div class="operator">&#43;</div> <div class="literal">&#34;:reports&#34;</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectHSet</div><div class="operator">(</div><div class="ident">expectedReportKey</div><div class="operator">,</div> <div class="ident">expectedData</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetErr</div><div class="operator">(</div><div class="ident">errors</div><div class="operator">.</div><div class="ident">New</div><div class="operator">(</div><div class="ident">errorMessage</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">err</div> <div class="operator">=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">WriteReportForCluster</div><div class="operator">(</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">Report3Rules</div><div class="operator">,</div> <div class="operator">[</div><div class="operator">]</div><div class="ident">types</div><div class="operator">.</div><div class="ident">ReportItem</div><div class="operator">{</div><div class="operator">}</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">KafkaOffset</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">Error</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">EqualError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">,</div> <div class="ident">errorMessage</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assertRedisExpectationsMet</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">server</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestRedisWriteReportForClusterErrorHandling3 checks how the method
+WriteReportForCluster handles errors</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestRedisWriteReportForClusterErrorHandling3</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">errorMessage</div> <div class="operator">:=</div> <div class="literal">&#34;expiration set error!&#34;</div><div class="operator"></div>
+
+	<div class="ident">client</div><div class="operator">,</div> <div class="ident">server</div> <div class="operator">:=</div> <div class="ident">getMockRedis</div><div class="operator">(</div><div class="ident">t</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>Redis client needs to be initialized</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">err</div> <div class="operator">:=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Init</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="keyword">if</div> <div class="ident">err</div> <div class="operator">!=</div> <div class="ident">nil</div> <div class="operator">{</div>
+		<div class="ident">t</div><div class="operator">.</div><div class="ident">Fatal</div><div class="operator">(</div><div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>it is expected that key will be set with given expiration period</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">expectedKey</div> <div class="operator">:=</div> <div class="ident">constructExpectedKey</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectSet</div><div class="operator">(</div><div class="ident">expectedKey</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="literal">&#34;OK&#34;</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">timestamp</div> <div class="operator">:=</div> <div class="ident">time</div><div class="operator">.</div><div class="ident">Now</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">expectedData</div> <div class="operator">:=</div> <div class="ident">ctypes</div><div class="operator">.</div><div class="ident">SimplifiedReport</div><div class="operator">{</div>
+		<div class="ident">OrgID</div><div class="operator">:</div>              <div class="ident">int</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">RequestID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ClusterID</div><div class="operator">:</div>          <div class="ident">string</div><div class="operator">(</div><div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">)</div><div class="operator">,</div>
+		<div class="ident">ReceivedTimestamp</div><div class="operator">:</div>  <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div>
+		<div class="ident">ProcessedTimestamp</div><div class="operator">:</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">RuleHitsCSV</div><div class="operator">:</div>        <div class="literal">&#34;&#34;</div><div class="operator">,</div>
+	<div class="operator">}</div><div class="operator"></div>
+
+	<div class="ident">expectedReportKey</div> <div class="operator">:=</div> <div class="ident">expectedKey</div> <div class="operator">&#43;</div> <div class="literal">&#34;:reports&#34;</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectHSet</div><div class="operator">(</div><div class="ident">expectedReportKey</div><div class="operator">,</div> <div class="ident">expectedData</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetVal</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">server</div><div class="operator">.</div><div class="ident">ExpectExpire</div><div class="operator">(</div><div class="ident">expectedReportKey</div><div class="operator">,</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">Expiration</div><div class="operator">)</div><div class="operator">.</div><div class="ident">SetErr</div><div class="operator">(</div><div class="ident">errors</div><div class="operator">.</div><div class="ident">New</div><div class="operator">(</div><div class="ident">errorMessage</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">err</div> <div class="operator">=</div> <div class="ident">client</div><div class="operator">.</div><div class="ident">WriteReportForCluster</div><div class="operator">(</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">Report3Rules</div><div class="operator">,</div> <div class="operator">[</div><div class="operator">]</div><div class="ident">types</div><div class="operator">.</div><div class="ident">ReportItem</div><div class="operator">{</div><div class="operator">}</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">LastCheckedAt</div><div class="operator">,</div> <div class="ident">timestamp</div><div class="operator">,</div>
+		<div class="ident">testdata</div><div class="operator">.</div><div class="ident">KafkaOffset</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">RequestID1</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">Error</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assert</div><div class="operator">.</div><div class="ident">EqualError</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">err</div><div class="operator">,</div> <div class="ident">errorMessage</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">assertRedisExpectationsMet</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">server</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>Don't decrease code coverage by non-functional and not covered code.</p>
+</td>
+	<td class="code"><pre><code>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestRedisStorageEmptyMethods1 calls empty methods that just needs to be
+defined in order for RedisStorage to satisfy Storage interface.</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestRedisStorageEmptyMethods1</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">RedisStorage</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisStorage</div><div class="operator">{</div><div class="operator">}</div><div class="operator"></div>
+	<div class="ident">orgID</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">clusterName</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfOrgs</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfClustersForOrg</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">time</div><div class="operator">.</div><div class="ident">Now</div><div class="operator">(</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadOrgIDsForClusters</div><div class="operator">(</div><div class="operator">[</div><div class="operator">]</div><div class="ident">types</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">{</div><div class="ident">clusterName</div><div class="operator">}</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReportsCount</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadReportsForClusters</div><div class="operator">(</div><div class="operator">[</div><div class="operator">]</div><div class="ident">types</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">{</div><div class="ident">clusterName</div><div class="operator">}</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">DoesClusterExist</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadReportForCluster</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">clusterName</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadReportInfoForCluster</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">clusterName</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadReportForClusterByClusterName</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">DeleteReportsForOrg</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">DeleteReportsForCluster</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetLatestKafkaOffset</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">MigrateToLatest</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetConnection</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">PrintRuleDisableDebugInfo</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetDBDriverType</div><div class="operator">(</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">WriteConsumerError</div><div class="operator">(</div><div class="ident">nil</div><div class="operator">,</div> <div class="ident">nil</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestRedisStorageEmptyMethods2 calls empty methods that just needs to be
+defined in order for RedisStorage to satisfy Storage interface.</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestRedisStorageEmptyMethods2</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">RedisStorage</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisStorage</div><div class="operator">{</div><div class="operator">}</div><div class="operator"></div>
+	<div class="ident">orgID</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">clusterName</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">ruleID</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">RuleID</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">errorKey</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">ErrorKey</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">userID</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">UserID</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">ruleSelector</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">RuleSelector</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadDisabledRule</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">VoteOnRule</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="ident">orgID</div><div class="operator">,</div> <div class="ident">userID</div><div class="operator">,</div> <div class="literal">0</div><div class="operator">,</div> <div class="literal">&#34;some message&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">AddOrUpdateFeedbackOnRule</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="ident">orgID</div><div class="operator">,</div> <div class="ident">userID</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">AddFeedbackOnRuleDisable</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="ident">orgID</div><div class="operator">,</div> <div class="ident">userID</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetUserFeedbackOnRuleDisable</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="ident">userID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetUserFeedbackOnRule</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="ident">userID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">LoadRuleContent</div><div class="operator">(</div><div class="ident">content</div><div class="operator">.</div><div class="ident">RuleContentDirectory</div><div class="operator">{</div><div class="operator">}</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetRuleByID</div><div class="operator">(</div><div class="ident">ruleID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetOrgIDByClusterID</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfSystemWideDisabledRules</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfClustersForOrgSpecificRule</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleSelector</div><div class="operator">,</div> <div class="ident">nil</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfClustersForOrgSpecificRule</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleSelector</div><div class="operator">,</div> <div class="operator">[</div><div class="operator">]</div><div class="ident">string</div><div class="operator">{</div><div class="literal">&#34;a&#34;</div><div class="operator">}</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadRecommendationsForClusters</div><div class="operator">(</div><div class="operator">[</div><div class="operator">]</div><div class="ident">string</div><div class="operator">{</div><div class="operator">}</div><div class="operator">,</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadClusterListRecommendations</div><div class="operator">(</div><div class="operator">[</div><div class="operator">]</div><div class="ident">string</div><div class="operator">{</div><div class="operator">}</div><div class="operator">,</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfDisabledClusters</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ReadSingleRuleTemplateData</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>TestRedisStorageEmptyMethods3 calls empty methods that just needs to be
+defined in order for RedisStorage to satisfy Storage interface.</p>
+</td>
+	<td class="code"><pre><code><div class="keyword">func</div> <div class="ident">TestRedisStorageEmptyMethods3</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="ident">RedisStorage</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RedisStorage</div><div class="operator">{</div><div class="operator">}</div><div class="operator"></div>
+	<div class="ident">orgID</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">OrgID</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">clusterName</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">ClusterName</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">rule</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">Rule</div><div class="operator">{</div><div class="operator">}</div><div class="operator"></div>
+	<div class="ident">ruleID</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">RuleID</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">ruleErrorKey</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">RuleErrorKey</div><div class="operator">{</div><div class="operator">}</div><div class="operator"></div>
+	<div class="ident">errorKey</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">ErrorKey</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">userID</div> <div class="operator">:=</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">UserID</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator"></div>
+
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">DisableRuleSystemWide</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="literal">&#34;justification#1&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">EnableRuleSystemWide</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">UpdateDisabledRuleJustification</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="literal">&#34;justification#2&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">WriteReportInfoForCluster</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">nil</div><div class="operator">,</div> <div class="ident">time</div><div class="operator">.</div><div class="ident">Time</div><div class="operator">{</div><div class="operator">}</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">WriteRecommendationsForCluster</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">clusterName</div><div class="operator">,</div> <div class="literal">&#34;&#34;</div><div class="operator">,</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">Timestamp</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">CreateRule</div><div class="operator">(</div><div class="ident">rule</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">DeleteRule</div><div class="operator">(</div><div class="ident">ruleID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">CreateRuleErrorKey</div><div class="operator">(</div><div class="ident">ruleErrorKey</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">DeleteRuleErrorKey</div><div class="operator">(</div><div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ToggleRuleForCluster</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="ident">orgID</div><div class="operator">,</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">RuleToggle</div><div class="operator">(</div><div class="literal">0</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">DeleteFromRuleClusterToggle</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">RateOnRule</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">,</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">UserVote</div><div class="operator">(</div><div class="literal">1</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetFromClusterRuleToggle</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">ruleID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetTogglesForRules</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">nil</div><div class="operator">,</div> <div class="ident">orgID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetUserFeedbackOnRules</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">nil</div><div class="operator">,</div> <div class="ident">userID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetUserDisableFeedbackOnRules</div><div class="operator">(</div><div class="ident">clusterName</div><div class="operator">,</div> <div class="ident">nil</div><div class="operator">,</div> <div class="ident">userID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetRuleWithContent</div><div class="operator">(</div><div class="ident">ruleID</div><div class="operator">,</div> <div class="ident">errorKey</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfDisabledRules</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">GetRuleRating</div><div class="operator">(</div><div class="ident">orgID</div><div class="operator">,</div> <div class="ident">types</div><div class="operator">.</div><div class="ident">RuleSelector</div><div class="operator">(</div><div class="literal">&#34;&#34;</div><div class="operator">)</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfReasons</div><div class="operator">(</div><div class="ident">userID</div><div class="operator">)</div><div class="operator"></div>
+	<div class="ident">_</div><div class="operator">,</div> <div class="ident">_</div> <div class="operator">=</div> <div class="ident">RedisStorage</div><div class="operator">.</div><div class="ident">ListOfDisabledRulesForClusters</div><div class="operator">(</div><div class="operator">[</div><div class="operator">]</div><div class="ident">string</div><div class="operator">{</div><div class="literal">&#34;&#34;</div><div class="operator">}</div><div class="operator">,</div> <div class="ident">orgID</div><div class="operator">)</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+<div class="keyword">func</div> <div class="ident">Test_GetRuleHitsCSV_CCXDEV_11329_Reproducer</div><div class="operator">(</div><div class="ident">t</div> <div class="operator">*</div><div class="ident">testing</div><div class="operator">.</div><div class="ident">T</div><div class="operator">)</div> <div class="operator">{</div>
+	<div class="keyword">var</div> <div class="ident">reportItems</div> <div class="operator">[</div><div class="operator">]</div><div class="ident">types</div><div class="operator">.</div><div class="ident">ReportItem</div><div class="operator"></div>
+	<div class="ident">_</div> <div class="operator">=</div> <div class="ident">copy</div><div class="operator">(</div><div class="ident">reportItems</div><div class="operator">,</div> <div class="ident">testdata</div><div class="operator">.</div><div class="ident">Report3RulesParsed</div><div class="operator">)</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>add .report suffix to rule modules</p>
+</td>
+	<td class="code"><pre><code>	<div class="keyword">for</div> <div class="ident">i</div> <div class="operator">:=</div> <div class="keyword">range</div> <div class="ident">reportItems</div> <div class="operator">{</div>
+		<div class="ident">ruleModule</div> <div class="operator">:=</div> <div class="ident">reportItems</div><div class="operator">[</div><div class="ident">i</div><div class="operator">]</div><div class="operator">.</div><div class="ident">Module</div><div class="operator"></div>
+		<div class="ident">ruleModule</div> <div class="operator">=</div> <div class="ident">ruleModule</div> <div class="operator">&#43;</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">ReportSuffix</div><div class="operator"></div>
+		<div class="ident">reportItems</div><div class="operator">[</div><div class="ident">i</div><div class="operator">]</div><div class="operator">.</div><div class="ident">Module</div> <div class="operator">=</div> <div class="ident">ruleModule</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+
+	<div class="ident">ruleHitsParsed</div> <div class="operator">:=</div> <div class="ident">storage</div><div class="operator">.</div><div class="ident">GetRuleHitsCSV</div><div class="operator">(</div><div class="ident">reportItems</div><div class="operator">)</div><div class="operator"></div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>split the CSV and iterate over the rule hits</p>
+</td>
+	<td class="code"><pre><code>	<div class="ident">ruleHitsSplit</div> <div class="operator">:=</div> <div class="ident">strings</div><div class="operator">.</div><div class="ident">Split</div><div class="operator">(</div><div class="ident">ruleHitsParsed</div><div class="operator">,</div> <div class="literal">&#34;,&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="keyword">for</div> <div class="ident">_</div><div class="operator">,</div> <div class="ident">ruleHit</div> <div class="operator">:=</div> <div class="keyword">range</div> <div class="ident">ruleHitsSplit</div> <div class="operator">{</div>
+		<div class="ident">ruleModule</div> <div class="operator">:=</div> <div class="ident">strings</div><div class="operator">.</div><div class="ident">Split</div><div class="operator">(</div><div class="ident">ruleHit</div><div class="operator">,</div> <div class="literal">&#34;|&#34;</div><div class="operator">)</div><div class="operator">[</div><div class="literal">0</div><div class="operator">]</div><div class="operator"></div>
+		<div class="ident">ruleModuleSplit</div> <div class="operator">:=</div> <div class="ident">strings</div><div class="operator">.</div><div class="ident">Split</div><div class="operator">(</div><div class="ident">ruleModule</div><div class="operator">,</div> <div class="literal">&#34;.&#34;</div><div class="operator">)</div><div class="operator"></div>
+		<div class="ident">ruleModuleSuffix</div> <div class="operator">:=</div> <div class="ident">ruleModuleSplit</div><div class="operator">[</div><div class="ident">len</div><div class="operator">(</div><div class="ident">ruleModuleSplit</div><div class="operator">)</div><div class="operator">-</div><div class="literal">1</div><div class="operator">]</div><div class="operator"></div>
+</code></pre></td>
+      </tr>
+      
+      <tr class="section">
+	<td class="doc"><p>rule module must not include the .report suffix after parsing</p>
+</td>
+	<td class="code"><pre><code>		<div class="ident">assert</div><div class="operator">.</div><div class="ident">NotEqual</div><div class="operator">(</div><div class="ident">t</div><div class="operator">,</div> <div class="ident">ruleModuleSuffix</div><div class="operator">,</div> <div class="literal">&#34;report&#34;</div><div class="operator">)</div><div class="operator"></div>
+	<div class="operator">}</div><div class="operator"></div>
+<div class="operator">}</div><div class="operator"></div>
+
+</code></pre></td>
+      </tr>
+      
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
