@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/RedHatInsights/insights-results-aggregator/storage"
+	"github.com/RedHatInsights/insights-results-aggregator/types"
 )
 
 func init() {
@@ -83,4 +84,63 @@ func TestNewDVOStorageReturnedImplementation(t *testing.T) {
 		Type:          "redis",
 	})
 	assert.Nil(t, s, "redis type is not supported for DVO storage")
+}
+
+func TestDBStorage_getWorkloadsInsertStatement(t *testing.T) {
+	testWorkloads := []types.WorkloadRecommendation{
+		{
+			ResponseID: "an_issue|DVO_AN_ISSUE",
+			Component:  "ccx_rules_ocp.external.dvo.an_issue_pod.recommendation",
+			Key:        "DVO_AN_ISSUE",
+			Links: types.DVOLinks{
+				Jira:                 []string{"https://issues.redhat.com/browse/AN_ISSUE"},
+				ProductDocumentation: []string{},
+			},
+			Details: types.DVODetails{CheckName: "", CheckURL: ""},
+			Tags:    []string{},
+			Workloads: []types.DVOWorkload{
+				{
+					Namespace:    "namespace-name-A",
+					NamespaceUID: "NAMESPACE-UID-A",
+					Kind:         "DaemonSet",
+					Name:         "test-name-0099",
+					UID:          "UID-0099",
+				},
+			},
+		},
+		{
+			ResponseID: "another_issue|DVO_ANOTHER_ISSUE",
+			Component:  "ccx_rules_ocp.external.dvo.another_issue_pod.recommendation",
+			Key:        "DVO_ANOTHER_ISSUE",
+			Links: types.DVOLinks{
+				Jira:                 []string{"https://issues.redhat.com/browse/ANOTHER_ISSUE"},
+				ProductDocumentation: []string{},
+			},
+			Details: types.DVODetails{CheckName: "", CheckURL: ""},
+			Tags:    []string{},
+			Workloads: []types.DVOWorkload{
+				{
+					Namespace:    "namespace-name-B",
+					NamespaceUID: "NAMESPACE-UID-B",
+					Kind:         "NotDaemonSet",
+					Name:         "test-name-1100",
+					UID:          "UID-1100",
+				},
+				{
+					Namespace:    "namespace-name-C",
+					NamespaceUID: "NAMESPACE-UID-C",
+					Kind:         "NotDaemonSet",
+					Name:         "test-name-1111",
+					UID:          "UID-1111",
+				},
+			},
+		},
+	}
+
+	fakeStorage := storage.NewDVORecommendationsFromConnection(nil, -1)
+	r := fakeStorage.GetWorkloadsInsertStatement(testWorkloads)
+
+	// 5*3 placeholders expected
+	const expected = "INSERT INTO dvo.dvo_report(org_id, cluster_id, namespace_id, namespace_name, report, recommendations, objects, reported_at, last_checked_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9),($10,$11,$12,$13,$14,$15,$16,$17,$18),($19,$20,$21,$22,$23,$24,$25,$26,$27)"
+	assert.Equal(t, expected, r)
 }

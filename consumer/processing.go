@@ -181,6 +181,12 @@ func (consumer *KafkaConsumer) HandleMessage(msg *sarama.ConsumerMessage) error 
 			if err := ocpStorage.WriteConsumerError(msg, err); err != nil {
 				log.Error().Err(err).Msg("Unable to write consumer error to storage")
 			}
+		} else if _, ok := consumer.Storage.(storage.DVORecommendationsStorage); ok {
+			// TODO: Implement
+			// if err := dvoStorage.WriteConsumerError(msg, err); err != nil {
+			// 	log.Error().Err(err).Msg("Unable to write consumer error to storage")
+			// }
+			log.Error().Err(err).Msg("This error should be stored in the DB")
 		} else {
 			logMessageError(consumer, msg, &message, unexpectedStorageType, errors.New("consumer error could not be stored"))
 		}

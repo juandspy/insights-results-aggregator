@@ -364,7 +364,6 @@ func TestParseDVOMessageWithProperMetrics(t *testing.T) {
 	assert.EqualValues(t, expectedWorkloads, parsed.ParsedWorkloads)
 }
 
-/*
 func TestProcessEmptyDVOMessage(t *testing.T) {
 	mockStorage, closer := ira_helpers.MustGetPostgresStorageDVO(t, true)
 	defer closer()
@@ -407,6 +406,8 @@ func TestProcessCorrectDVOMessage(t *testing.T) {
 	// exactly one record should be written into database
 	assert.Equal(t, 1, count, "process message should write one record into DB")
 }
+
+/*
 
 func TestProcessingEmptyMetricsMissingAttributesWithClosedStorage(t *testing.T) {
 	mockStorage, closer := ira_helpers.MustGetPostgresStorageDVO(t, true)

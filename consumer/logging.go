@@ -82,7 +82,7 @@ func logDuration(tStart, tEnd time.Time, offset int64, key string) {
 }
 
 func fillEvent(baseEvent *zerolog.Event, consumer *KafkaConsumer, originalMessage *sarama.ConsumerMessage, parsedMessage *incomingMessage) *zerolog.Event {
-	baseEvent = baseEvent.Str(topicKey, consumer.Configuration.Topic)
+	baseEvent = baseEvent.Str(topicKey, consumer.Configuration.Topic).Caller(2)
 
 	// Check for nil pointers before raising the log error (CCXDEV-12426)
 	if originalMessage == nil {

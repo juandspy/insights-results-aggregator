@@ -17,7 +17,9 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -39,6 +41,16 @@ type DVORecommendationsStorage interface {
 	GetMaxVersion() migration.Version
 	MigrateToLatest() error
 	ReportsCount() (int, error)
+	WriteReportForCluster(
+		orgID types.OrgID,
+		clusterName types.ClusterName,
+		report types.ClusterReport,
+		workloads []types.WorkloadRecommendation,
+		collectedAtTime time.Time,
+		gatheredAtTime time.Time,
+		storedAtTime time.Time,
+		requestID types.RequestID,
+	) error
 }
 
 // dvoDBSchema represents the name of the DB schema used by DVO-related queries/migrations
@@ -188,7 +200,7 @@ func (storage DVORecommendationsDBStorage) WriteReportForCluster(
 	orgID types.OrgID,
 	clusterName types.ClusterName,
 	report types.ClusterReport,
-	rules []types.ReportItem,
+	workloads []types.WorkloadRecommendation,
 	lastCheckedTime time.Time,
 	gatheredAt time.Time,
 	storedAtTime time.Time,
@@ -212,11 +224,26 @@ func (storage DVORecommendationsDBStorage) WriteReportForCluster(
 	}
 
 	err = func(tx *sql.Tx) error {
-		if ok, err := reportExists(tx, "dvo.dvo_report", orgID, clusterName, report, lastCheckedTime); ok {
+		// Check if there is a more recent report for the cluster already in the database.
+		rows, err := tx.Query(
+			"SELECT last_checked_at FROM dvo.dvo_report WHERE org_id = $1 AND cluster_id = $2 AND last_checked_at > $3;",
+			orgID, clusterName, lastCheckedTime)
+		err = types.ConvertDBError(err, []interface{}{orgID, clusterName})
+		if err != nil {
+			log.Error().Err(err).Msg("Unable to look up the most recent report in the database")
 			return err
 		}
 
-		err = storage.updateReport(tx, orgID, clusterName, report, rules, lastCheckedTime, gatheredAt, storedAtTime)
+		defer closeRows(rows)
+
+		// If there is one, print a warning and discard the report (don't update it).
+		if rows.Next() {
+			log.Warn().Msgf("Database already contains report for organization %d and cluster name %s more recent than %v",
+				orgID, clusterName, lastCheckedTime)
+			return nil
+		}
+
+		err = storage.updateReport(tx, orgID, clusterName, report, workloads, lastCheckedTime, gatheredAt, storedAtTime)
 		if err != nil {
 			return err
 		}
@@ -238,11 +265,114 @@ func (storage DVORecommendationsDBStorage) updateReport(
 	orgID types.OrgID,
 	clusterName types.ClusterName,
 	report types.ClusterReport,
-	rules []types.ReportItem,
+	workloads []types.WorkloadRecommendation,
 	lastCheckedTime time.Time,
 	gatheredAt time.Time,
 	reportedAtTime time.Time,
 ) error {
-	// TODO
+	deleteQuery := "DELETE FROM dvo.dvo_report WHERE org_id = $1 AND cluster_id = $2;"
+	_, err := tx.Exec(deleteQuery, orgID, clusterName)
+	if err != nil {
+		log.Err(err).Msgf("Unable to remove previous cluster reports (org: %v, cluster: %v)", orgID, clusterName)
+		return err
+	}
+
+	// Perform the workload insert.
+	// All older workloads has been deleted for given cluster so it is
+	// possible to just insert new workloads w/o the need to update on conflict
+	if len(workloads) > 0 {
+		// Get the INSERT statement for writing a rule into the database.
+		workloadInsertStatement := storage.GetWorkloadsInsertStatement(workloads)
+
+		// Get values to be stored in dvo.dvo_report table
+		values := valuesForWorkloadsInsert(orgID, clusterName, workloads)
+
+		_, err = tx.Exec(workloadInsertStatement, values...)
+		if err != nil {
+			log.Err(err).Msgf("Unable to insert the cluster workloads (org: %v, cluster: %v)",
+				orgID, clusterName,
+			)
+			return err
+		}
+	}
+
 	return nil
+}
+
+// getTotalLength is used so that we can get the amount of individual workloads in a
+// DVO report. Each DVO recommendation in the "workload_recommendations" field has a
+// "workloads" field containing the affected namespaces.
+func getTotalLength(workloads []types.WorkloadRecommendation) int {
+	totalLength := 0
+	for _, workload := range workloads {
+		totalLength += len(workload.Workloads)
+	}
+	return totalLength
+}
+
+// GetWorkloadsInsertStatement method prepares DB statement to be used to write
+// the workloads into dvo.dvo_report table for given cluster_id
+func (storage DVORecommendationsDBStorage) GetWorkloadsInsertStatement(workloads []types.WorkloadRecommendation) string {
+	const ruleInsertStatement = "INSERT INTO dvo.dvo_report(org_id, cluster_id, namespace_id, namespace_name, report, recommendations, objects, reported_at, last_checked_at) VALUES %s"
+
+	// pre-allocate array for placeholders
+	placeholders := make([]string, getTotalLength(workloads))
+
+	// fill-in placeholders for INSERT statement
+	index := 0
+	for _, workload := range workloads {
+		for range workload.Workloads {
+			placeholders[index] = fmt.Sprintf("($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)",
+				index*9+1,
+				index*9+2,
+				index*9+3,
+				index*9+4,
+				index*9+5,
+				index*9+6,
+				index*9+7,
+				index*9+8,
+				index*9+9,
+			)
+			index += 1
+		}
+	}
+
+	// construct INSERT statement for multiple values
+	return fmt.Sprintf(ruleInsertStatement, strings.Join(placeholders, ","))
+}
+
+// valuesForWorkloadsInsert function prepares values to insert workloads into
+// dvo.dvo_report table.
+func valuesForWorkloadsInsert(
+	orgID types.OrgID,
+	clusterName types.ClusterName,
+	workloads []types.WorkloadRecommendation,
+) []interface{} {
+	// fill-in values for INSERT statement
+	values := make([]interface{}, getTotalLength(workloads)*9)
+
+	index := 0
+	for _, workloadRecommendation := range workloads {
+		for _, workload := range workloadRecommendation.Workloads {
+			values[6*index] = orgID                   // org_id
+			values[6*index+1] = clusterName           // cluster_id
+			values[6*index+2] = workload.NamespaceUID // namespace_id
+			values[6*index+3] = workload.Namespace    // namespace_name
+			workloadAsJSON, err := json.Marshal(workload)
+			if err != nil {
+				log.Error().Err(err).Msg("cannot store raw workload report")
+				values[6*index+4] = "{}" // report
+			} else {
+				values[6*index+4] = string(workloadAsJSON) // report
+			}
+			// TODO:
+			values[6*index+5] = 0                                                      // recommendations
+			values[6*index+6] = 0                                                      // objects
+			values[6*index+7] = types.Timestamp(time.Now().UTC().Format(time.RFC3339)) // reported_at
+			values[6*index+8] = types.Timestamp(time.Now().UTC().Format(time.RFC3339)) // last_checked_at
+
+			index += 1
+		}
+	}
+	return values
 }
